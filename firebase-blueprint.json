@@ -1,0 +1,133 @@
+{
+  "entities": {
+    "agent": {
+      "title": "Agent Profile",
+      "description": "Details of the individual agent using the tracker",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "description": "Unique ID of the agent (from Firebase Auth)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the agent"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the agent"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of profile creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last modification"
+        }
+      },
+      "required": ["agentId", "name", "email", "createdAt", "updatedAt"]
+    },
+    "agent_target": {
+      "title": "Agent Business Target",
+      "description": "Goal tracking business targets and actuals for a specific year per agent",
+      "type": "object",
+      "properties": {
+        "targetId": {
+          "type": "string",
+          "description": "Combination of agentId and year"
+        },
+        "agentId": {
+          "type": "string",
+          "description": "Unique ID of the agent"
+        },
+        "agentName": {
+          "type": "string",
+          "description": "Caching of the agent's name for direct aggregate lookup"
+        },
+        "agentEmail": {
+          "type": "string",
+          "description": "Caching of the agent's email"
+        },
+        "year": {
+          "type": "integer",
+          "description": "The financial year (e.g., 2026)"
+        },
+        "overallTargetAce": {
+          "type": "integer",
+          "description": "The agent's target yearly ACE"
+        },
+        "overallTargetCases": {
+          "type": "integer",
+          "description": "The agent's target yearly cases"
+        },
+        "overallTargetAcs": {
+          "type": "integer",
+          "description": "The agent's target ACS"
+        },
+        "monthlyBreakdown": {
+          "type": "array",
+          "description": "Monthly targets and actual achievements"
+        },
+        "closingRatio": {
+          "type": "integer",
+          "description": "The agent's target closing ratio percentage (0-100)"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last modification"
+        }
+      },
+      "required": [
+        "targetId",
+        "agentId",
+        "agentName",
+        "agentEmail",
+        "year",
+        "overallTargetAce",
+        "overallTargetCases",
+        "overallTargetAcs",
+        "monthlyBreakdown",
+        "updatedAt"
+      ]
+    },
+    "agent_note": {
+      "title": "Agent Private Note",
+      "description": "Private notes about the agent accessible and editable ONLY by the lead admin",
+      "type": "object",
+      "properties": {
+        "agentId": {
+          "type": "string",
+          "description": "Unique ID of the agent"
+        },
+        "note": {
+          "type": "string",
+          "description": "The private text content of the admin note"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last modification"
+        }
+      },
+      "required": ["agentId", "note", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/agents/{agentId}": {
+      "schema": "agent",
+      "description": "Main profiles of registered agents under INFAQ Consultancy"
+    },
+    "/agent_targets/{targetId}": {
+      "schema": "agent_target",
+      "description": "Yearly tracker goals and progress logs submitted by agents"
+    },
+    "/agent_notes/{agentId}": {
+      "schema": "agent_note",
+      "description": "Private notes about each agent, editable and readable only by group lead"
+    }
+  }
+}

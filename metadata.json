@@ -1,0 +1,8 @@
+{
+  "name": "Goal Tracker Pro (by INFAQ Consultancy)",
+  "description": "Dashboard penjejakan sasaran ACE dan prestasi kes bagi ejen Takaful (by INFAQ Consultancy).",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

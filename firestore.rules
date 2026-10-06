@@ -1,0 +1,147 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. catch-all deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email != null;
+    }
+
+    function isLead(email) {
+      return email.lower() == 'afyan.ikhlas@gmail.com';
+    }
+
+    function isLeadUser() {
+      return isEmailVerified() && isLead(request.auth.token.email);
+    }
+
+    function isOwner(ownerId) {
+      return isEmailVerified() && request.auth.uid == ownerId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation for Agent Profile
+    function isValidAgent(data) {
+      return data.keys().hasAll(['agentId', 'name', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().size() >= 5
+        && data.agentId is string
+        && (data.agentId == request.auth.uid || isLead(request.auth.token.email))
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 100
+        && data.email is string
+        && (data.createdAt is timestamp || data.createdAt is string)
+        && (data.updatedAt is timestamp || data.updatedAt is string);
+    }
+
+    // Validation for Agent Notes
+    function isValidAgentNote(data) {
+      return data.keys().hasAll(['agentId', 'note', 'updatedAt'])
+        && data.keys().size() >= 3
+        && data.agentId is string
+        && data.note is string
+        && data.note.size() <= 10000
+        && (data.updatedAt is timestamp || data.updatedAt is string);
+    }
+
+    // Validation for MonthlyData maps in lists
+    function isValidMonthlyBreakdown(list) {
+      return list is list
+        && list.size() <= 12; // Strictly up to 12 months in a financial year
+    }
+
+    // Validation for Agent targets
+    function isValidAgentTarget(data) {
+      return data.keys().hasAll([
+        'targetId', 'agentId', 'agentName', 'agentEmail', 'year',
+        'overallTargetAce', 'overallTargetCases', 'overallTargetAcs',
+        'monthlyBreakdown', 'updatedAt'
+      ])
+        && data.keys().size() >= 10
+        && data.targetId is string
+        && data.agentId is string
+        && (data.agentId == request.auth.uid || isLead(request.auth.token.email))
+        && data.agentName is string
+        && data.agentName.size() > 0
+        && data.agentName.size() <= 100
+        && data.agentEmail is string
+        && data.year is number
+        && data.year >= 2000
+        && data.year <= 2100
+        && data.overallTargetAce is number
+        && data.overallTargetAce >= 0
+        && data.overallTargetCases is number
+        && data.overallTargetCases >= 0
+        && data.overallTargetAcs is number
+        && data.overallTargetAcs >= 0
+        && (!data.keys().hasAll(['closingRatio']) || (data.closingRatio is number && data.closingRatio >= 0 && data.closingRatio <= 100))
+        && (!data.keys().hasAll(['closingRatioPresentation']) || (data.closingRatioPresentation is number && data.closingRatioPresentation >= 0 && data.closingRatioPresentation <= 100))
+        && isValidMonthlyBreakdown(data.monthlyBreakdown)
+        && (data.updatedAt is timestamp || data.updatedAt is string);
+    }
+
+    // Agent profile rules
+    match /agents/{agentId} {
+      allow get: if isEmailVerified() && (isOwner(agentId) || isLeadUser());
+      allow list: if isEmailVerified() && (isLeadUser() || isOwner(agentId) || (resource != null && resource.data.agentId == request.auth.uid));
+      allow create: if (isOwner(agentId) || isLeadUser())
+        && isValidId(agentId) 
+        && isValidAgent(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if (isOwner(agentId) || isLeadUser())
+        && isValidId(agentId) 
+        && isValidAgent(incoming())
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if false; // Profiles are permanent
+    }
+
+    // Agent business targets rules
+    match /agent_targets/{targetId} {
+      allow get: if isEmailVerified() && (isLeadUser() || (resource != null && resource.data.agentId == request.auth.uid));
+      allow list: if isEmailVerified() && (isLeadUser() || (resource != null && resource.data.agentId == request.auth.uid));
+      allow create: if isEmailVerified()
+        && isValidId(targetId)
+        && (incoming().agentId == request.auth.uid || isLeadUser())
+        && isValidAgentTarget(incoming())
+        && incoming().updatedAt == request.time;
+      allow update: if isEmailVerified()
+        && isValidId(targetId)
+        && (existing().agentId == request.auth.uid || isLeadUser())
+        && isValidAgentTarget(incoming())
+        && incoming().updatedAt == request.time;
+      allow delete: if isEmailVerified() && (existing().agentId == request.auth.uid || isLeadUser());
+    }
+
+    // Agent notes rules - strictly accessible/editable by Lead only
+    match /agent_notes/{agentId} {
+      allow get, list: if isLeadUser();
+      allow create, update: if isLeadUser()
+        && isValidId(agentId)
+        && isValidAgentNote(incoming())
+        && (incoming().updatedAt == request.time || incoming().updatedAt is string);
+      allow delete: if isLeadUser();
+    }
+  }
+}
